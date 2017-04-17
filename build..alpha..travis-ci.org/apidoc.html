@@ -1,0 +1,419 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="https://github.com/timoxley/pkgfiles"
+
+    >pkgfiles (v2.3.2)</a>
+</h1>
+<h4>List all files which would be published in a package.</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.pkgfiles">module pkgfiles</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.pkgfiles.pkgfiles">
+            function <span class="apidocSignatureSpan"></span>pkgfiles
+            <span class="apidocSignatureSpan">(dir, fn)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.pkgfiles.summary">
+            function <span class="apidocSignatureSpan">pkgfiles.</span>summary
+            <span class="apidocSignatureSpan">(dir, done)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.pkgfiles.toString">
+            function <span class="apidocSignatureSpan">pkgfiles.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.pkgfiles.summary">module pkgfiles.summary</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.pkgfiles.summary.summary">
+            function <span class="apidocSignatureSpan">pkgfiles.</span>summary
+            <span class="apidocSignatureSpan">(dir, done)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.pkgfiles.toString">module pkgfiles.toString</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.pkgfiles.toString.toString">
+            function <span class="apidocSignatureSpan">pkgfiles.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.pkgfiles" id="apidoc.module.pkgfiles">module pkgfiles</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.pkgfiles.pkgfiles" id="apidoc.element.pkgfiles.pkgfiles">
+        function <span class="apidocSignatureSpan"></span>pkgfiles
+        <span class="apidocSignatureSpan">(dir, fn)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function pkgFiles(dir, fn) {
+  resolve(&#x27;fstream-npm&#x27;).fromGlobal(&#x27;npm&#x27;, function(err, fstreamPath) {
+    if (err) return fn(err)
+    var files = []
+    var packages = []
+    var nest = path.join(path.dirname(dir), &#x27;package&#x27;)
+    if (!fstreamPath) {
+      console.error(&#x27;Warning: Could not find fstream-npm in global npm.&#x27;)
+      console.error(&#x27;You may not see matching behaviour.&#x27;)
+    }
+    fstreamPath = fstreamPath || &#x27;fstream-npm&#x27;
+
+    var fstream = require(fstreamPath)
+    fstream({ path: dir })
+    .on(&#x27;entry&#x27;, function(entry) {
+      files.push(entry.path)
+    })
+    .on(&#x27;package&#x27;, function(pkg) {
+      packages.push(pkg)
+    })
+    .on(&#x27;error&#x27;, function(err) {
+      fn(err)
+      fn = function() {}
+    })
+    .on(&#x27;end&#x27;, function() {
+
+      files = files.map(function(file) {
+        return path.join(dir, path.relative(nest, file))
+      })
+
+      map(files, Infinity, function(file, next) {
+        fs.lstat(file, function(err, stat) {
+          var name = path.relative(dir, file)
+          if (err) {
+            if (err.code === &#x27;ENOENT&#x27;) return next(null, {
+              name: name,
+              size: 0,
+              diskSize: 0,
+              exists: false
+            })
+            return next(err)
+          }
+          return next(null, {
+            name: name,
+            size: stat.size,
+            diskSize: 512 * stat.blocks,
+            exists: true,
+            isDirectory: false
+          })
+        })
+      }, function(err, entries) {
+        if (err) return fn(err)
+        var dirNames = entries
+        .reduce(function(dirNames, entry) {
+          return dirNames.concat(getAncestors(entry.name))
+        }, [])
+        .filter(Boolean)
+        .filter(unique)
+
+        var dirEntries = dirNames.map(function(dirName) {
+          return {
+            name: dirName,
+            size: 0,
+            diskSize: 0,
+            exists: true,
+            children: [],
+            isDirectory: true
+          }
+        })
+
+        dirEntries.forEach(function(dirEntry) {
+          dirEntry.children = dirEntry.children
+          .concat(entries.filter(function(entry) {
+            return (
+              dirEntry.name !== entry.name &#x26;&#x26;
+              !path.relative(dirEntry.name, path.dirname(entry.name))
+            )
+          }))
+        })
+
+        dirEntries.forEach(function(dirEntry) {
+          dirEntry.children = dirEntry.children
+          .concat(dirEntries.filter(function(entry) {
+            return (
+              dirEntry.name !== entry.name &#x26;&#x26;
+              !path.relative(dirEntry.name, path.dirname(entry.name))
+            )
+          }))
+        })
+
+        dirEntries.forEach(function(dirEntry) {
+          dirEntry.children = dirEntry.children.filter(unique)
+        })
+        var rootDir = dirEntries.filter(function(dirEntry) {
+          return dirEntry.name === &#x27;.&#x27;
+        }).pop()
+        getDirSize(rootDir)
+        return fn(null, entries.concat(dirEntries), packages)
+      })
+    })
+  })
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.pkgfiles.summary" id="apidoc.element.pkgfiles.summary">
+        function <span class="apidocSignatureSpan">pkgfiles.</span>summary
+        <span class="apidocSignatureSpan">(dir, done)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function summary(dir, done) {
+  var fn = function once(err, result) {
+    done(err, result)
+    fn = function() {}
+  }
+
+  var result = {
+    packages: [],
+    entries: [],
+    sizeWithDependencies: 0,
+    diskSizeWithDependencies: 0,
+    publishSize: 0,
+    publishDiskSize: 0
+  }
+
+  var pending = 2
+
+  pkgFiles(dir, function(err, entries, packages) {
+    if (err) return fn(err)
+    result.packages = packages
+    var files = entries.filter(function(entry) {
+      return !entry.isDirectory
+    })
+    result.publishSize = files.reduce(function(t, entry) {
+      return t + (entry.size || 0)
+    }, 0)
+    result.publishDiskSize = files.reduce(function(t, entry) {
+      return t + (entry.diskSize || 0)
+    }, 0)
+    result.entries = entries || []
+    if (!--pending) return fn(null, result)
+  })
+
+  duSizes(dir, function(err, dir) {
+    if (err) return fn(err)
+    result.diskSizeWithDependencies = dir.diskSize
+    result.sizeWithDependencies = dir.size
+    if (!--pending) return fn(null, result)
+  })
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+  // /Users/timoxley/Projects/pkgfiles/test/pkg/lib/index.js – 0 bytes
+})
+```
+
+```js
+var pkgfiles = require(&#x27;pkgfiles&#x27;)
+
+pkgfiles.<span class="apidocCodeKeywordSpan">summary</span>(process.cwd(), function(err, results) {
+  results.entries // entries from pkgFiles
+  results.packages // packages from pkgFiles
+  results.extractedSize // size including dependencies
+  results.extractedDiskSize // size on disk including dependencies
+  results.publishSize // size excluding dependencies
+  results.publishDiskSize // size on diesk excluding dependencies
+})
+...</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.pkgfiles.toString" id="apidoc.element.pkgfiles.toString">
+        function <span class="apidocSignatureSpan">pkgfiles.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">toString = function () {
+    return text;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.pkgfiles.summary" id="apidoc.module.pkgfiles.summary">module pkgfiles.summary</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.pkgfiles.summary.summary" id="apidoc.element.pkgfiles.summary.summary">
+        function <span class="apidocSignatureSpan">pkgfiles.</span>summary
+        <span class="apidocSignatureSpan">(dir, done)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function summary(dir, done) {
+  var fn = function once(err, result) {
+    done(err, result)
+    fn = function() {}
+  }
+
+  var result = {
+    packages: [],
+    entries: [],
+    sizeWithDependencies: 0,
+    diskSizeWithDependencies: 0,
+    publishSize: 0,
+    publishDiskSize: 0
+  }
+
+  var pending = 2
+
+  pkgFiles(dir, function(err, entries, packages) {
+    if (err) return fn(err)
+    result.packages = packages
+    var files = entries.filter(function(entry) {
+      return !entry.isDirectory
+    })
+    result.publishSize = files.reduce(function(t, entry) {
+      return t + (entry.size || 0)
+    }, 0)
+    result.publishDiskSize = files.reduce(function(t, entry) {
+      return t + (entry.diskSize || 0)
+    }, 0)
+    result.entries = entries || []
+    if (!--pending) return fn(null, result)
+  })
+
+  duSizes(dir, function(err, dir) {
+    if (err) return fn(err)
+    result.diskSizeWithDependencies = dir.diskSize
+    result.sizeWithDependencies = dir.size
+    if (!--pending) return fn(null, result)
+  })
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+  // /Users/timoxley/Projects/pkgfiles/test/pkg/lib/index.js – 0 bytes
+})
+```
+
+```js
+var pkgfiles = require(&#x27;pkgfiles&#x27;)
+
+pkgfiles.<span class="apidocCodeKeywordSpan">summary</span>(process.cwd(), function(err, results) {
+  results.entries // entries from pkgFiles
+  results.packages // packages from pkgFiles
+  results.extractedSize // size including dependencies
+  results.extractedDiskSize // size on disk including dependencies
+  results.publishSize // size excluding dependencies
+  results.publishDiskSize // size on diesk excluding dependencies
+})
+...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.pkgfiles.toString" id="apidoc.module.pkgfiles.toString">module pkgfiles.toString</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.pkgfiles.toString.toString" id="apidoc.element.pkgfiles.toString.toString">
+        function <span class="apidocSignatureSpan">pkgfiles.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function toString() { [native code] }</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
